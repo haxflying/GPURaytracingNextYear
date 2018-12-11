@@ -1,0 +1,21 @@
+﻿#pragma kernel CSMain
+
+struct _rtObj {
+	float3 center;
+	float radius;
+};
+
+struct _ray {
+	float3 origin;
+	float3 direction;
+};
+
+RWStructuredBuffer<_rtObj> objs;
+
+[numthreads(4,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	int obj_id = id.x;
+	_rtObj target = objs[obj_id];
+
+}
