@@ -5,39 +5,44 @@ using UnityEngine.Rendering;
 
 public class MainLoop : MonoBehaviour {
 
-    private Vector2Int targetResolution;
-    public ComputeShader rayTraceCompute;
-    private Camera cam;
-    private CommandBuffer cb;
-    private ComputeBuffer rtObjBuffer;
-    private int _kernel;
+    public Shader raytracingShader;
+    [Range(0, 3)]
+    public int indexTest;
 
-    public void Start()
+    private CommandBuffer cb_rt;
+    private Camera cam;
+    private ComputeBuffer objs_sphere;
+    private Material raytracingMat;
+
+    private void Start()
     {
         cam = GetComponent<Camera>();
+        cb_rt = new CommandBuffer();
+        cb_rt.name = "RayTracing";
+        raytracingMat = new Material(raytracingShader);
 
-        cb = new CommandBuffer();
-        cb.name = "RayTracing";
 
-        cam.AddCommandBufferAsync(CameraEvent.BeforeImageEffects, cb, ComputeQueueType.Default);
-        _kernel = rayTraceCompute.FindKernel("CSMain");
+        cam.AddCommandBuffer(CameraEvent.AfterEverything, cb_rt);
 
-        targetResolution = new Vector2Int(800, 400);
         RtObject[] objs = FindObjectsOfType<RtObject>();
-        List<Sphere> list = new List<Sphere>();
+        List<Sphere> bufferData = new List<Sphere>();
         foreach(var obj in objs)
         {
-            list.Add(obj.toSphere());
+            bufferData.Add(obj.toSphere());
         }
-        rayTraceCompute.SetBuffer(_kernel, "objs", rtObjBuffer);
+        objs_sphere = new ComputeBuffer(objs.Length, DataSize.Sphere());
+        objs_sphere.SetData(bufferData.ToArray());        
     }
 
     private void OnPreRender()
     {
-        if (cb == null)
+        if (cb_rt == null)
             return;
 
-        cb.Clear();
-        cb.DispatchCompute(rayTraceCompute, _kernel, targetResolution.x / 2, targetResolution.y / 2, 1);
+        cb_rt.Clear();
+        cb_rt.SetGlobalBuffer("obj_spheres", objs_sphere);
+        indexTest = Mathf.Min(objs_sphere.count, indexTest);
+        cb_rt.SetGlobalInt("_index", indexTest);
+        cb_rt.Blit(null, BuiltinRenderTextureType.CameraTarget, raytracingMat);
     }
 }

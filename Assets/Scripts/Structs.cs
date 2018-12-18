@@ -5,6 +5,7 @@ public struct Sphere
 {
     public Vector3 center;
     public float radius;
+    public Color color;
 }
 
 public struct zRay
@@ -18,7 +19,7 @@ public static class DataSize
 {
     public static int Sphere()
     {
-        return 4 * sizeof(float);
+        return 8 * sizeof(float);
     }
 
     public static int zRay()

@@ -209,6 +209,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b7213af7e5bcfed43b075b406a850943, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  col: {r: 1, g: 0.28773582, b: 0.28773582, a: 0}
 --- !u!135 &491525523
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -286,6 +287,7 @@ GameObject:
   - component: {fileID: 534669905}
   - component: {fileID: 534669904}
   - component: {fileID: 534669903}
+  - component: {fileID: 534669906}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: Untagged
@@ -353,6 +355,19 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &534669906
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 534669902}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c73423080230818488da3ea6a18ad098, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  raytracingShader: {fileID: 4800000, guid: 0e453ce935a69b84cb8068b13d0d6f0b, type: 3}
+  indexTest: 0
 --- !u!1 &1194504283
 GameObject:
   m_ObjectHideFlags: 0
@@ -450,6 +465,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b7213af7e5bcfed43b075b406a850943, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  col: {r: 0.6615429, g: 0.6698113, b: 0, a: 0}
 --- !u!1 &1228804111
 GameObject:
   m_ObjectHideFlags: 0
@@ -547,6 +563,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b7213af7e5bcfed43b075b406a850943, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  col: {r: 0.21942003, g: 0.5943396, b: 0.09812209, a: 0}
 --- !u!1 &2011296317
 GameObject:
   m_ObjectHideFlags: 0
@@ -644,3 +661,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b7213af7e5bcfed43b075b406a850943, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  col: {r: 0, g: 0.754717, b: 0.7469271, a: 0}
