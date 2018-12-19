@@ -29,6 +29,8 @@
 				float4 vertex : SV_POSITION;
 			};
 
+			
+
 			v2f vert (appdata v)
 			{
 				v2f o;

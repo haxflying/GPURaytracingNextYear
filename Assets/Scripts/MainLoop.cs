@@ -5,24 +5,26 @@ using UnityEngine.Rendering;
 
 public class MainLoop : MonoBehaviour {
 
-    public Shader raytracingShader;
-    [Range(0, 3)]
-    public int indexTest;
-
+    public Shader initRaytracingShader;
+    [Range(1f, 4f)]
+    public float rtRenderScale = 1f;
     private CommandBuffer cb_rt;
     private Camera cam;
     private ComputeBuffer objs_sphere;
-    private Material raytracingMat;
+    private Material initRaytracingMat;
+    private int lastHitPos, lastHitNormal;
+    private RenderTexture currentRtResult;
+    private RenderTextureDescriptor desc;
 
     private void Start()
     {
         cam = GetComponent<Camera>();
         cb_rt = new CommandBuffer();
         cb_rt.name = "RayTracing";
-        raytracingMat = new Material(raytracingShader);
+        initRaytracingMat = new Material(initRaytracingShader);
 
 
-        cam.AddCommandBuffer(CameraEvent.AfterEverything, cb_rt);
+        cam.AddCommandBuffer(CameraEvent.BeforeImageEffects, cb_rt);
 
         RtObject[] objs = FindObjectsOfType<RtObject>();
         List<Sphere> bufferData = new List<Sphere>();
@@ -31,7 +33,12 @@ public class MainLoop : MonoBehaviour {
             bufferData.Add(obj.toSphere());
         }
         objs_sphere = new ComputeBuffer(objs.Length, DataSize.Sphere());
-        objs_sphere.SetData(bufferData.ToArray());        
+        objs_sphere.SetData(bufferData.ToArray());
+
+        desc = new RenderTextureDescriptor(
+            Mathf.FloorToInt(Screen.width * rtRenderScale),
+            Mathf.FloorToInt(Screen.height * rtRenderScale),
+            RenderTextureFormat.ARGB32, 24);
     }
 
     private void OnPreRender()
@@ -41,8 +48,24 @@ public class MainLoop : MonoBehaviour {
 
         cb_rt.Clear();
         cb_rt.SetGlobalBuffer("obj_spheres", objs_sphere);
-        indexTest = Mathf.Min(objs_sphere.count, indexTest);
-        cb_rt.SetGlobalInt("_index", indexTest);
-        cb_rt.Blit(null, BuiltinRenderTextureType.CameraTarget, raytracingMat);
+
+        lastHitPos = Shader.PropertyToID("_TexLastHitPos");
+        lastHitNormal = Shader.PropertyToID("_TexLastHitNormal");
+
+        RenderTargetIdentifier pos = new RenderTargetIdentifier(lastHitPos);
+        RenderTargetIdentifier normal = new RenderTargetIdentifier(lastHitNormal);
+
+        cb_rt.GetTemporaryRT(lastHitPos, desc);
+        cb_rt.GetTemporaryRT(lastHitNormal, desc);
+
+        cb_rt.SetRenderTarget(new RenderTargetIdentifier[] { pos, normal}, pos);
+        cb_rt.Blit(null, BuiltinRenderTextureType.CurrentActive, initRaytracingMat);
+
+
+    }
+
+    private void OnRenderImage(RenderTexture src, RenderTexture dst)
+    {
+        
     }
 }
