@@ -33,6 +33,7 @@
 			{
 				float4 dest0 : SV_Target0;
 				float4 dest1 : SV_Target1;
+				float4 dest2 : SV_Target2;
 			};
 
 			struct sphere
@@ -59,6 +60,8 @@
 			sampler2D _MainTex;
 			sampler2D _TexLastHitNormal;
 			sampler2D _TexLastHitPos;
+			sampler2D _TexLastHitColor;
+			sampler2D _CameraGBufferTexture0;
 			sampler2D _CameraGBufferTexture2;
 
 			inline float3 computeCameraSpacePosFromDepthAndVSInfo(v2f i)
@@ -75,19 +78,21 @@
 			    return vposPersp.xyz;
 			}
 
-			inline bool raytrace(float3 origin, float3 direction, sphere obj, inout float3 point, inout float3 normal)
+			inline bool raytrace(float3 origin, float3 direction, float3 center, float radius, 
+				inout float3 hitpoint, inout float3 hitnormal, inout float dist)
 			{
 				float3 rayDir = direction;
-				float3 originToCenter = origin - obj.center;
+				float3 originToCenter = origin - center;
 				float b = dot(rayDir, originToCenter);
-				float c = dot(originToCenter, originToCenter) - obj.radius * obj.radius;
+				float c = dot(originToCenter, originToCenter) - radius * radius;
 				float d = sqrt(b * b - c);
 				float start = -b - d;
 				float end = -b + d;
-				point = origin + rayDir * min(start, end);
-				normal = normalize(point - obj.center);
+				dist = min(start, end);
+				hitpoint = origin + rayDir * dist;
+				hitnormal = normalize(hitpoint - center);
 
-				return (start > 0) && (end > 0)
+				return (start > 0) && (end > 0);
 			}
 
 
@@ -97,31 +102,53 @@
 				fout o;
 				
 				#if _INIT
+
 				i.ray *= (_ProjectionParams.z / i.ray.z);
 				float3 vpos = computeCameraSpacePosFromDepthAndVSInfo(i);
 				float3 wpos = mul (unity_CameraToWorld, float4(vpos, 1));
-				float3 wnormal = tex2D(_CameraGBufferTexture2, i.uv).rgb;
+				float3 wnormal = tex2D(_CameraGBufferTexture2, i.uv).rgb;				
 				o.dest0 = float4(wpos, 1);
 				o.dest1 = float4(wnormal, 1);
+				o.dest2 = tex2D(_CameraGBufferTexture0, i.uv);
+
 				#else
+
 				o.dest0 = 0;
 				o.dest1 = 0;
+				o.dest2 = UNITY_LIGHTMODEL_AMBIENT;
 				float4 origins = tex2D(_TexLastHitPos, i.uv);
+				//if this ray is still alive
 				if(origins.a != 0)
 				{
 					float3 normals = tex2D(_TexLastHitNormal, i.uv);
-					float3 point = 0;
-					float3 normal = 0;
+					float4 colors = tex2D(_TexLastHitColor, i.uv);
+					float4 albedo = tex2D(_CameraGBufferTexture0, i.uv);
+					float3 hitpoint = 0;
+					float3 hitnormal = 0;
+
+					float dist = 0;
+					float minDist = _ProjectionParams.z;
 					for (int j = 0; j < obj_spheres_length; ++j)
 					{
-						if(raytrace(origins.xyz, normals, obj_spheres[j], point, normal))
+						//if this ray hit anything
+						if(raytrace(origins.xyz, normals, obj_spheres[j].center, obj_spheres[j].radius, hitpoint, hitnormal, dist))
 						{
-							o.dest0 = float4(point, 1);
-							o.dest1 = float4(normal, 1);
+							if(dist < minDist)
+							{
+								o.dest0 = float4(hitpoint, 1);
+								o.dest1 = float4(hitnormal, 1);
+								o.dest2 = colors * albedo;
+								minDist = dist;
+							}
+						}
+						else
+						{
+							o.dest2 = colors * UNITY_LIGHTMODEL_AMBIENT;
 						}
 					}	
-				}			
+				}		
 				#endif
+
 				return o;
 			}
 			ENDCG
