@@ -1,21 +1,190 @@
-﻿#pragma kernel CSMain
+﻿#pragma kernel RayTrace
+#pragma kernel InitCameraRays
+#pragma kernel NormalizeSamples
 
-struct _rtObj {
-	float3 center;
-	float radius;
-};
+#include "Structs.cginc"
+#include "Sampler.cginc"
+#include "Shading.cginc"
 
-struct _ray {
-	float3 origin;
-	float3 direction;
-};
+int _MaxBounces;
 
-RWStructuredBuffer<_rtObj> objs;
+float4x4 _Camera;
+float4x4 _CameraI;
+float4x4 _Projection;
+float4x4 _ProjectionI;
 
-[numthreads(4,1,1)]
-void CSMain (uint3 id : SV_DispatchThreadID)
+int _ActiveMaterial;
+
+Texture2D<float4> _AccumulatedImage;
+StructuredBuffer<Sphere> _Spheres;
+RWStructuredBuffer<Ray> _Rays;
+
+
+bool HitSphere(Ray r, float tMin, float tMax, out HitRecord rec)
 {
-	int obj_id = id.x;
-	_rtObj target = objs[obj_id];
+    rec.t = -1.0;
+    rec.p = 0;
+    rec.normal = 0;
+    rec.uv = 0;
+    rec.albedo = float3(1, 0, 0);
+    rec.material = 0;
 
+    HitRecord tempRec;
+    bool hitAnything = false;
+    float closestSoFar = tMax;
+    uint numStructs;
+    uint stride;
+    _Spheres.GetDimensions(numStructs, stride);
+
+    for (uint i = 0; i < numStructs; i++)
+    {
+        if (_Spheres[i].Hit(r, tMin, closestSoFar, tempRec))
+        {
+            hitAnything = true;
+            closestSoFar = tempRec.t;
+            rec = tempRec;
+        }
+    }
+    return hitAnything;
+}
+
+bool Color(inout Ray r, float2 uv)
+{
+    HitRecord rec;
+    rec.t = -1.0;
+    rec.p = 0;
+    rec.normal = float3(1, 0, 0);
+    rec.uv = 0;
+    rec.albedo = float3(1, 0, 0);
+    rec.material = 0;
+    r.bounces++;
+
+    if (HitSphere(r, 0.001, FLT_MAX, rec))
+    {
+        rec.uv = uv;
+        Ray scattered = r;
+        float3 attenuation = 0;
+        if (ScatterLambertian(r, rec, attenuation, scattered))
+        {
+            scattered.color.rgb = r.color.rgb * attenuation;
+            r = scattered;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    else
+    {
+        r.color.rgb *= EnvColor(r, uv);
+        return false;
+    }
+}
+
+//thread shechule to avoid unpreditable ray teminate
+void GetNextRay(uint3 id, uint rayCount, uint width, uint height,
+                out int2 xy, out float2 uv, out int rayIndex, out Ray ray)
+{
+    rayIndex = _Rays.IncrementCounter() % rayCount;
+    ray = _Rays[rayIndex];
+    xy = int2(rayIndex / height % width, rayIndex % height);
+    uv = float2(xy.x / (float) width, 1 - xy.y / (float) height);
+    uv += Noise(uv + _R0 * id.z) * float2(1 / (float) width, 1 / (float) height);
+}
+
+Ray InitCameraRay(float2 uv)
+{
+    float4 rayStart = float4((uv.xy) * 2 - 1, 0, 1);
+    float4 rayEnd = float4((uv.xy) * 2 - 1, 1, 1);
+
+    rayStart = mul(_ProjectionI, rayStart);
+    rayStart /= rayStart.w;
+    rayStart = mul(_CameraI, rayStart);
+
+    rayEnd = mul(_ProjectionI, rayEnd);
+    rayEnd /= rayEnd.w;
+    rayEnd = mul(_CameraI, rayEnd);
+
+    Ray r;
+    r.origin = rayStart.xyz;
+    r.direction = rayEnd.xyz - rayStart.xyz;
+    r.bounces = 0;
+    r.color = 1;
+    r.accumColor = 0;
+    r.material = kMaterialInvalid;
+    return r;
+}
+
+[numthreads(8,8,1)]
+void RayTrace(uint3 id : SV_DispatchThreadID,
+            uint3 groupThreadID : SV_GroupThreadID,
+            uint groupIndex : SV_GroupIndex)
+{
+    uint width, height;
+    _AccumulatedImage.GetDimensions(width, height);
+
+    uint rayCount, stride;
+    _Rays.GetDimensions(rayCount, stride);
+
+    int rayIndex;
+    int2 xy;
+    float2 uv;
+    Ray r;
+
+    GetNextRay(id, rayCount, width, height, xy, uv, rayIndex, r);
+    if (length(r.direction) == 0)
+        return;
+
+    r.direction = normalize(r.direction);
+    bool scattered = Color(r, uv);
+    
+    if(r.bounces > _MaxBounces || !scattered)
+    {
+        r.accumColor += float4(lerp(r.color.rgb, float3(0, 0, 0), r.bounces > _MaxBounces), 1);
+        r.origin = 0;
+        r.direction = 0;
+        r.color = 0;
+        r.bounces = 0;
+    }
+
+    _Rays[rayIndex] = r;
+}
+
+[numthreads(8,8,1)]
+void InitCameraRays(uint3 id : SV_DispatchThreadID,
+            uint3 groupThreadID : SV_GroupThreadID,
+            uint groupIndex : SV_GroupIndex)
+{
+    uint width, height;
+    _AccumulatedImage.GetDimensions(width, height);
+
+    int rayIndex = (id.x * height + id.y) + (width * height * id.z);
+
+    if (length(_Rays[rayIndex].direction) > 0)
+    {
+        //this ray has been processed
+        return;
+    }
+
+    float2 uv = float2(id.x / (width - 1.0), id.y / (height - 1.0));
+    
+    uv += (Noise(uv * 10000 + id.z * 100 + _Time.y) - 0.5)
+            * float2(1.0 / width, 1.0 / height);
+
+    Ray r = InitCameraRay(uv);
+    r.accumColor = _Rays[rayIndex].accumColor;
+    _Rays[rayIndex] = r;
+}
+
+[numthreads(8,8,1)]
+void NormalizeSamples(uint3 id : SV_DispatchThreadID)
+{
+    uint width, height;
+    _AccumulatedImage.GetDimensions(width, height);
+
+    int rayIndex = (id.x * height + id.y) + (width * height * id.z);
+    _Rays[rayIndex].accumColor = min(1, _Rays[rayIndex].accumColor /
+                                    max(1, _Rays[rayIndex].accumColor.a));
+    _Rays[rayIndex].accumColor /= 8;
 }

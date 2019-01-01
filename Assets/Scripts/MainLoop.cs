@@ -32,7 +32,7 @@ public class MainLoop : MonoBehaviour {
         List<Sphere> bufferData = new List<Sphere>();
         foreach(var obj in objs)
         {
-            bufferData.Add(obj.toSphere());
+            bufferData.Add(obj.GetSphere());
         }
         objs_sphere = new ComputeBuffer(objs.Length, DataSize.Sphere());
         objs_sphere.SetData(bufferData.ToArray());
@@ -50,6 +50,7 @@ public class MainLoop : MonoBehaviour {
 
         cb_rt.Clear();
         cb_rt.SetGlobalBuffer("obj_spheres", objs_sphere);
+        cb_rt.SetGlobalInt("obj_spheres_length", objs_sphere.count);
 
         lastHitPos = Shader.PropertyToID("HitPos");
         lastHitNormal = Shader.PropertyToID("HitNormal");
@@ -79,10 +80,11 @@ public class MainLoop : MonoBehaviour {
         cb_rt.GetTemporaryRT(bufferNormal, desc);
         cb_rt.GetTemporaryRT(bufferColor, desc);
 
+
         for (int i = 0; i < maxBounce; i++)
         {
             if (i % 2 == 0)
-            {
+            {              
                 cb_rt.SetRenderTarget(new RenderTargetIdentifier[] { posBuffer, normalBuffer, colorBuffer }, posBuffer);
                 cb_rt.SetGlobalTexture("_TexLastHitPos", lastHitPos);
                 cb_rt.SetGlobalTexture("_TexLastHitNormal", lastHitNormal);
@@ -91,6 +93,7 @@ public class MainLoop : MonoBehaviour {
             }
             else
             {
+                //cb_rt.Blit(color, colorBuffer);
                 cb_rt.SetRenderTarget(new RenderTargetIdentifier[] { pos, normal, color }, pos);
                 cb_rt.SetGlobalTexture("_TexLastHitPos", posBuffer);
                 cb_rt.SetGlobalTexture("_TexLastHitNormal", normalBuffer);

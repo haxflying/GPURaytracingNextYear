@@ -63,6 +63,17 @@
 			sampler2D _TexLastHitColor;
 			sampler2D _CameraGBufferTexture0;
 			sampler2D _CameraGBufferTexture2;
+			uint rng_state = 2;
+
+			float rand_xorshift()
+			{
+			    // Xorshift algorithm from George Marsaglia's paper
+			    rng_state ^= (rng_state << 13);
+			    rng_state ^= (rng_state >> 17);
+			    rng_state ^= (rng_state << 5);
+			    float f0 = float(rng_state) * (1.0 / 4294967296.0);
+			    return f0;
+			}
 
 			inline float3 computeCameraSpacePosFromDepthAndVSInfo(v2f i)
 			{
@@ -81,18 +92,17 @@
 			inline bool raytrace(float3 origin, float3 direction, float3 center, float radius, 
 				inout float3 hitpoint, inout float3 hitnormal, inout float dist)
 			{
-				float3 rayDir = direction;
-				float3 originToCenter = origin - center;
-				float b = dot(rayDir, originToCenter);
-				float c = dot(originToCenter, originToCenter) - radius * radius;
-				float d = sqrt(b * b - c);
-				float start = -b - d;
-				float end = -b + d;
-				dist = min(start, end);
-				hitpoint = origin + rayDir * dist;
+				direction = direction;
+				float3 oc = origin - center;
+				float a = dot(direction, direction);
+				float b = 2 * dot(oc, direction);
+				float c = dot(oc, oc) - radius * radius;
+				float discriminant = b * b - 4 * a * c;
+				dist = (-b - sqrt(discriminant))/ (2 * a);
+				hitpoint = origin + direction * dist;
 				hitnormal = normalize(hitpoint - center);
 
-				return (start > 0) && (end > 0);
+				return discriminant > 0;
 			}
 
 
@@ -133,20 +143,25 @@
 						//if this ray hit anything
 						if(raytrace(origins.xyz, normals, obj_spheres[j].center, obj_spheres[j].radius, hitpoint, hitnormal, dist))
 						{
-							if(dist < minDist)
+							//if(dist < minDist)
 							{
 								o.dest0 = float4(hitpoint, 1);
 								o.dest1 = float4(hitnormal, 1);
-								o.dest2 = colors * albedo;
+								o.dest2 = 0;//colors * albedo;
 								minDist = dist;
-							}
+							}															
 						}
 						else
 						{
-							o.dest2 = colors * UNITY_LIGHTMODEL_AMBIENT;
-						}
+							o.dest2 = 1;//colors * UNITY_LIGHTMODEL_AMBIENT;
+						}						
 					}	
-				}		
+
+				}	
+				else
+				{
+					o.dest2 = 0.5;//UNITY_LIGHTMODEL_AMBIENT;
+				}	
 				#endif
 
 				return o;

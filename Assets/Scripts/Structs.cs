@@ -3,17 +3,12 @@ using System.Collections;
 
 public struct Sphere
 {
-    public Vector3 center;
-    public float radius;
-    public Color color;
+    public Vector3 Center;
+    public float Radius;
+    public int Material;
+    public Vector3 Albedo;
 }
 
-public struct zRay
-{
-    public Vector3 origin;
-    public Vector3 direction;
-
-}
 
 public static class DataSize
 {
@@ -22,8 +17,4 @@ public static class DataSize
         return 8 * sizeof(float);
     }
 
-    public static int zRay()
-    {
-        return 6 * sizeof(float);
-    }
 }
