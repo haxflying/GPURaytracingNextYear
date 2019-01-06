@@ -491,7 +491,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b7213af7e5bcfed43b075b406a850943, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Material: 1
+  Material: 2
   ColorMultiplier: 1
 --- !u!1 &1228804111
 GameObject:

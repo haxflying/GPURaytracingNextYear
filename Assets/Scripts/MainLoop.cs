@@ -34,7 +34,7 @@ public class MainLoop : MonoBehaviour {
         {
             bufferData.Add(obj.GetSphere());
         }
-        objs_sphere = new ComputeBuffer(objs.Length, DataSize.Sphere());
+        objs_sphere = new ComputeBuffer(objs.Length, DataSize.Sphere);
         objs_sphere.SetData(bufferData.ToArray());
 
         desc = new RenderTextureDescriptor(

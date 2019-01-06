@@ -175,7 +175,7 @@ public class CSLoop : MonoBehaviour
 
             if (m_sphereData.Length > 0)
             {
-                m_spheresBuffer = new ComputeBuffer(m_sphereData.Length, sizeof(float) * kFloatsPerSphere);
+                m_spheresBuffer = new ComputeBuffer(m_sphereData.Length, DataSize.Sphere);
                 RayTraceKernels.SetBuffer(m_rayTraceKernel, "_Spheres", m_spheresBuffer);
             }
         }
@@ -216,7 +216,7 @@ public class CSLoop : MonoBehaviour
 
         // IMPORTANT NOTE: the byte size below must match the shader, not C#! In this case they match.
         m_raysBuffer = new ComputeBuffer(numRays,
-                                         kBytesPerFloat * kFloatsPerRay + sizeof(int) + sizeof(int),
+                                         DataSize.Ray,
                                          ComputeBufferType.Counter);
 
         var samples = new Vector3[4096];

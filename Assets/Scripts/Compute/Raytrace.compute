@@ -27,7 +27,8 @@ bool HitSphere(Ray r, float tMin, float tMax, out HitRecord rec)
     rec.normal = 0;
     rec.uv = 0;
     rec.albedo = float3(1, 0, 0);
-    rec.material = 0;
+    rec.material.type = 0;
+    rec.material.scatteDistance = 0;
 
     HitRecord tempRec;
     bool hitAnything = false;
@@ -56,7 +57,8 @@ bool Color(inout Ray r, float2 uv)
     rec.normal = float3(1, 0, 0);
     rec.uv = 0;
     rec.albedo = float3(1, 0, 0);
-    rec.material = 0;
+    rec.material.type = 0;
+    rec.material.scatteDistance = 0;
     r.bounces++;
 
     if (HitSphere(r, 0.001, FLT_MAX, rec))
@@ -64,7 +66,8 @@ bool Color(inout Ray r, float2 uv)
         rec.uv = uv;
         Ray scattered = r;
         float3 attenuation = 0;
-        if (ScatterLambertian(r, rec, attenuation, scattered))
+        if (ScatterLambertian(r, rec, attenuation, scattered)
+            || ScatterMetal(r, rec, attenuation, scattered))
         {
             scattered.color.rgb = r.color.rgb * attenuation;
             r = scattered;
@@ -112,7 +115,8 @@ Ray InitCameraRay(float2 uv)
     r.bounces = 0;
     r.color = 1;
     r.accumColor = 0;
-    r.material = kMaterialInvalid;
+    r.material.type = kMaterialInvalid;
+    r.material.scatteDistance = 0;
     return r;
 }
 

@@ -1,5 +1,6 @@
 #define kMaterialInvalid 0
 #define kMaterialLambertian 1
+#define kMaterialMetal 2
 
 bool Refract(float3 v, float3 n, float niOverNt, out float3 refracted)
 {
@@ -29,16 +30,40 @@ vec3 EnvColor(Ray r, vec2 uv)
 
 bool ScatterLambertian(Ray rIn, HitRecord rec, inout vec3 attenuation, inout Ray scattered)
 {
-
-
+    if (rec.material.type != kMaterialLambertian)
+    {
+        return false;
+    }
     vec3 target = rec.p + rec.normal + RandomInUnitSphere(rec.uv);
   
     scattered.origin = rec.p + .001 * rec.normal;
     scattered.direction = target - rec.p;
     scattered.color = rIn.color;
     scattered.bounces = rIn.bounces;
-    scattered.material = kMaterialLambertian;
+    scattered.material.type = kMaterialLambertian;
   
     attenuation = rec.albedo;
     return true;
+}
+
+bool ScatterMetal(Ray rIn, HitRecord rec, inout vec3 attenuation, inout Ray scattered)
+{
+    if (rec.material.type != kMaterialMetal)
+    {
+        return false;
+    }
+  
+  // Fuzz should be a material parameter.
+    const float kFuzz = rec.material.scatteDistance;
+
+    vec3 reflected = reflect(normalize(rIn.direction), rec.normal);
+  
+    scattered.direction = reflected + kFuzz * RandomInUnitSphere(rec.uv);
+    scattered.origin = rec.p + .001 * scattered.direction;
+    scattered.color = rIn.color;
+    scattered.bounces = rIn.bounces;
+    scattered.material.type = kMaterialMetal;
+
+    attenuation = rec.albedo;
+    return dot(scattered.direction, rec.normal) > 0;
 }

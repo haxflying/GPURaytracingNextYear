@@ -3,19 +3,27 @@
 #define vec3 float3
 #define vec4 float4
 
+
+struct Material
+{
+    int type;
+    float scatteDistance;
+};
+
 struct Ray {
     float3 origin;
     float3 direction;
     float3 color;
     float4 accumColor;
     int bounces;
-    int material;
+    Material material;
 
     float3 PointAtParameter(float t)
     {
         return origin + t * direction;
     }
 };
+
 
 struct HitRecord
 {
@@ -24,14 +32,15 @@ struct HitRecord
     float3 p;
     float3 normal;
     float3 albedo;
-    int material;
+    Material material;
 };
+
 
 struct Sphere
 {
     float3 center;
     float radius;
-    int material;
+    Material material;
     float3 albedo;
 
     bool Hit(Ray r, float tMin, float tMax, out HitRecord rec);

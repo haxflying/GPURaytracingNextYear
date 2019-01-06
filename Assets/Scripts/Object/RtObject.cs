@@ -25,14 +25,16 @@ public class RtObject : MonoBehaviour {
     {
         // Careful to handle colorspaces here.
         var albedo = GetComponent<MeshRenderer>().material.color.linear;
+        var smoothness = GetComponent<MeshRenderer>().material.GetFloat("_Glossiness");
         albedo *= ColorMultiplier;
 
         var sphere = new Sphere();
         sphere.Albedo = new Vector3(albedo.r, albedo.g, albedo.b);
         sphere.Radius = transform.localScale.x / 2;
         sphere.Center = transform.position;
-        sphere.Material = (int)Material;
-
+        sphere.Material.type = (int)Material;
+        sphere.Material.scatterDistance = Material == MaterialRt.Metal ? 1 - smoothness : 0;
+        print("smoothness " + smoothness);
         return sphere;
     }
 
